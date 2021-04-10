@@ -1,9 +1,12 @@
 import base64
 import hashlib
+from cfg import LNK, KEY
+
 import requests
 import pprint
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
+import concurrent.futures
 
 
 HOST = 'https://omr.gov.ua'
@@ -28,11 +31,13 @@ def get_content(html):
     items = soup.find_all('td', class_='col-3')
     href_list = []
     for td in items:
-        td:BeautifulSoup
+
+        td: BeautifulSoup
         if td.find('a'):
             href_list.append(HOST + td.a.attrs.get('href'))
+    return href_list
 
-def rishennya(url:str)-> Document:
+def rishennya(url:str=None)-> Document:
     page = get_html(url)
     soup = BeautifulSoup(page.content, 'html.parser')
     if soup.find('h1'):
@@ -47,9 +52,9 @@ def rishennya(url:str)-> Document:
     md5_hash = hash_object.hexdigest()
 
     return Document.parse_obj({
-        'title':title,
-        'link':url,
-        'file_content':base64.b64encode(text.encode()).decode(),
+        'title': title,
+        'link': url,
+        'file_content': base64.b64encode(text.encode()).decode(),
         'file_name': md5_hash+'.txt'
     })
 
@@ -57,12 +62,26 @@ def rishennya(url:str)-> Document:
 def parse():
     html = get_html(URL)
     if html.status_code == 200:
-        get_content(html.text)
+        return get_content(html.text)
+
     else:
         print('Error')
 
 
 if __name__ == '__main__':
-    a=rishennya('https://omr.gov.ua/ua/acts/council/183703/')
-    pprint.pprint(a)
+    rishennya_urls = parse()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = []
+        for url in rishennya_urls[:1]:
+            futures.append(executor.submit(rishennya, url=url))
+        for future in concurrent.futures.as_completed(futures):
+            doc = future.result()
+            response = requests.post(LNK,
+                         json=doc.dict(),
+                         headers={'AUTHORIZATION': KEY})
+            print(response.json())
+            print(response.status_code)
+
+
+
 
