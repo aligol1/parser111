@@ -1,12 +1,13 @@
 import base64
 import hashlib
-from cfg import LNK, KEY
+from cfg import LNK, KEY, FILE_BASE
 
 import requests
 import pprint
 from bs4 import BeautifulSoup
 from pydantic import BaseModel
 import concurrent.futures
+import os
 
 
 HOST = 'https://omr.gov.ua'
@@ -67,21 +68,44 @@ def parse():
     else:
         print('Error')
 
+def load_visited_links()->list[str]:
+    poseshennyi = []
+    if os.path.exists(FILE_BASE):
+        with open(FILE_BASE) as fp:
+            temp = fp.readlines()
+            for i in temp:
+                poseshennyi.append(i.strip())
+    return poseshennyi
+
+
+def store_link(doc):
+    with open(FILE_BASE, "a") as fp:
+        fp.write(doc.link + "\n")
+
+def send_to_check(doc):
+    response = requests.post(LNK,
+        json =doc.dict(),
+        headers ={'AUTHORIZATION': KEY})
+    return response
+
 
 if __name__ == '__main__':
     rishennya_urls = parse()
+    poseshennyi = load_visited_links()
+
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = []
         for url in rishennya_urls[:1]:
-            futures.append(executor.submit(rishennya, url=url))
+            if url not in poseshennyi:
+                futures.append(executor.submit(rishennya, url=url))
+        docs = []
+
         for future in concurrent.futures.as_completed(futures):
             doc = future.result()
-            response = requests.post(LNK,
-                         json=doc.dict(),
-                         headers={'AUTHORIZATION': KEY})
-            print(response.json())
-            print(response.status_code)
-
-
-
-
+            docs.append(doc)
+        futures = []
+        for i in docs:
+            futures.append(executor.submit(send_to_check, i))
+            store_link(i)
+        for future in concurrent.futures.as_completed(futures):
+            doc_ = future.result()
