@@ -4,9 +4,16 @@ import os
 
 import requests
 from bs4 import BeautifulSoup
+from pydantic.main import BaseModel
 
 from cfg import HEADERS, HOST, URL, FILE_BASE, LNK, KEY
-from main import Document
+
+class Document(BaseModel):
+    '''Структура описывающая формат принемаемый API'''
+    title: str
+    link: str
+    file_content: str
+    file_name: str
 
 
 def get_html(url, params=None) -> requests.Response:
@@ -50,7 +57,7 @@ def rishennya(url: str = '') -> Document:
     })
 
 
-def parse() -> list[str]:
+def get_list_rishen() -> list[str]:
     html = get_html(URL)
     if html.status_code == 200:
         return get_content(html.text)
@@ -77,6 +84,7 @@ def store_link(doc: Document):
 
 
 def send_to_check(doc: Document):
+    '''Отправляет документ по API на проверку'''
     response = requests.post(LNK,
                              json=doc.dict(),
                              headers={'AUTHORIZATION': KEY})
