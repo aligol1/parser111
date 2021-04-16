@@ -12,14 +12,14 @@ if __name__ == '__main__':
             poseshennyi = load_visited_links()
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 futures = []
-                for url in rishennya_urls[:2]:
+                for url in rishennya_urls[:3]:
                     if url not in poseshennyi:
                         futures.append(executor.submit(rishennya, url=url))
                 docs = []
                 for future in concurrent.futures.as_completed(futures):
                     doc = future.result()
                     docs.append(doc)
-                print(docs)
+                    print(docs)
                 futures = []
                 for i in docs:
                     futures.append(executor.submit(send_to_check, i))

@@ -23,12 +23,11 @@ def get_html(url, params=None) -> requests.Response:
 
 
 def get_content(html: str) -> list[str]:
-    ''' Получить список ссылок на документы из страницы '''
+    ''' Получить список ссылок из страницы '''
     soup = BeautifulSoup(html, 'html.parser')
     items = soup.find_all('td', class_='col-3')
     href_list = []
     for td in items:
-
         td: BeautifulSoup
         if td.find('a'):
             href_list.append(HOST + td.a.attrs.get('href'))
